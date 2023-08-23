@@ -1,22 +1,22 @@
 ## CRUD de carros utilizando socket em Python
 
 ### Campos do objeto: <br />
-    - Placa (string) <br />
-    - Nome  (string) <br />
-    - Marca (string) <br />
-    - Ano   (int) <br />
-    - KM rodados (int) <br />
-    - Tipo de combustivel (string) <br />
+    - Placa (string)
+    - Nome  (string) 
+    - Marca (string) 
+    - Ano   (int) 
+    - KM rodados (int)
+    - Tipo de combustivel (string) 
 
 ### Formato do objeto empacotado: 
     - PLACA@NOME@MARCA@ANO@KM@COMBUSTIVEL (string)
 
 ### Comandos (server side): <br />
-    - '0': create <br />
-    - '1': read <br />
-    - '2': update <br />
-    - '3': delete <br />
-    - '4': close <br />
+    - '0': create 
+    - '1': read 
+    - '2': update 
+    - '3': delete 
+    - '4': close 
 
 ### Dependências: <br />
     - PySimpleGui
