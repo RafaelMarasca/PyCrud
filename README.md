@@ -8,7 +8,8 @@
     - KM rodados (int) <br />
     - Tipo de combustivel (string) <br />
 
-### Formato do objeto empacotado: PLACA@NOME@MARCA@ANO@KM@COMBUSTIVEL (string)
+### Formato do objeto empacotado: 
+    - PLACA@NOME@MARCA@ANO@KM@COMBUSTIVEL (string)
 
 ### Comandos (server side): <br />
     - '0': create <br />
