@@ -1,5 +1,5 @@
-KCW9930 Honda CivicEX 2014 3821 Flex
 PZA7925 Ford FocusSE 2004 782871 Ethanol
 8GDU832 Hyundai SantaFe 2006 18723 Diesel
 7RUX177 ElPremium Acura 1999 654847 Gasoline
 LWX1918 3Series BMW 2003 1257 Gasoline
+KCW9930 Honda CivicEX 2014 3821 Flex

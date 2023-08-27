@@ -73,7 +73,11 @@ def main():
 
     op = None
     
-    #'0' = create; '1' = read; '2' = update; '3' = delete; '4' = end
+    # '0' = create; 
+    # '1' = read; 
+    # '2' = update; 
+    # '3' = delete;
+    # '4' = end
     while op != '4':
         op = (socket_data.recv(1)).decode()
 
@@ -85,19 +89,28 @@ def main():
             entry_lst[3] = int(entry_lst[3])
             entry_lst[4] = int(entry_lst[4])
 
-            car_create(car_dict, entry_lst[0], entry_lst[1:], fi_name)
+            if(car_dict.get(entry_lst[0], None) != None):
+                socket_data.send(b'\xFF')
+            else:
+                socket_data.send(b'\x00')
+                car_create(car_dict, entry_lst[0], entry_lst[1:], fi_name)
 
 
         elif(op == '1'):
-            socket_data.send(len(car_dict).to_bytes(length=1, byteorder='big', signed=False))
+            plate_sz = int.from_bytes(socket_data.recv(1), byteorder='big', signed=False)
+            plate = socket_data.recv(plate_sz)
+            plate = plate.decode()
 
-            for plate, attr in car_dict.items():
+            if(car_dict.get(plate, None) != None):
+                attr = car_dict[plate]
+        
                 entry_str = plate + "@" + attr[0] + "@" + attr[1] + "@" + str(attr[2]) + "@" + str(attr[3]) + "@" + attr[4]
 
                 socket_data.send(len(entry_str).to_bytes(length=1, byteorder='big', signed=False))
 
                 socket_data.send(entry_str.encode())
-
+            else:
+                socket_data.send(b'\xFF')
 
         elif(op == '2'):
             entry_sz = int.from_bytes(socket_data.recv(1), byteorder='big', signed=False)
@@ -107,21 +120,24 @@ def main():
             entry_lst[3] = int(entry_lst[3])
             entry_lst[4] = int(entry_lst[4])
 
-            car_update(car_dict, entry_lst[0], entry_lst[1:], fi_name)
+            if(car_dict.get(entry_lst[0]) == None):
+                socket_data.send(b'\xFF')
+            else:
+                socket_data.send(b'\x00')
+                car_update(car_dict, entry_lst[0], entry_lst[1:], fi_name)
 
         elif(op == '3'):
             plate_sz = int.from_bytes(socket_data.recv(1), byteorder='big', signed=False)
             plate = socket_data.recv(plate_sz).decode()
 
-            car_delete(car_dict, plate, fi_name)
-
-
-
+            if(car_dict.get(plate, None) == None):
+                socket_data.send(b'\xFF')
+            else:
+                socket_data.send(b'\x00')
+                car_delete(car_dict, plate, fi_name)
     
     socket_data.close()
     conn_server.close()
-
-
 
 
 if __name__ == "__main__":
