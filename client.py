@@ -1,173 +1,157 @@
-import PySimpleGUI as sg
+#!/usr/bin/env python
+""" 
+Este script implementa o lado cliente da aplicação
+CRUD para cadastro de carros.
+"""
+
+__author__ = "Lucas Carvalho and Rafael Marasca Martins"
+
 import socket
-
-sg.theme("DarkBrown1")
-
-win_layout = [
-    [
-        sg.Text("Placa", size=(15), font=("Arial Baltic", 12)),
-        sg.InputText(size = 37, enable_events=True, key="-PLATE-", font=("Arial Baltic", 12))
-    ],
-    [
-        sg.Text("Modelo", size=(15), font=("Arial Baltic", 12)),
-        sg.InputText(size = 37, enable_events=True, key="-NAME-", font=("Arial Baltic", 12))
-    ],
-    [
-        sg.Text("Marca", size=(15), font=("Arial Baltic", 12)),
-        sg.InputText(size = 37, enable_events=True, key="-BRAND-", font=("Arial Baltic", 12))
-    ],
-    [
-        sg.Text("Ano", size=(15), font=("Arial Baltic", 12)),
-        sg.InputText(size = 37, enable_events=True, key="-YEAR-", font=("Arial Baltic", 12))
-    ],
-    [
-        sg.Text("KM Rodados", size=(15), font=("Arial Baltic", 12)),
-        sg.InputText(size = 37, enable_events=True, key="-KMS-", font=("Arial Baltic", 12))
-    ],
-    [
-        sg.Text("Combustível", size=(15), font=("Arial Baltic", 12)),
-        sg.InputText(size = 37, enable_events=True, key="-FUEL-", font=("Arial Baltic", 12))
-    ],
-    [
-        sg.Button("Criar", size = (7), enable_events=True, key ="-ADDB-", font=("Arial Baltic", 12)),
-        sg.Button("Atualizar", size = (7), enable_events=True, key ="-REFB-", font=("Arial Baltic", 12)),
-        sg.Button("Editar", size = (7), enable_events=True, key ="-UPDB-", font=("Arial Baltic", 12)),
-        sg.Button("Deletar", size = (7), enable_events=True, key ="-DELB-", font=("Arial Baltic", 12)),
-        sg.Button("Limpar", size = (7), enable_events=True, key ="-CLRB-", font=("Arial Baltic", 12))
-    ]
-]
-
-def car_ins(entry_str, car_dict):
-    entry = entry_str.split('@')
-    
-    car_dict[entry[0]] = [entry[1], entry[2], int(entry[3]), int(entry[4]), entry[5]]
-
+import codes
+import gui as g
 
 def main():
     dest_ip = "127.0.0.1"
     dest_port = 55000
-    dest = (dest_ip, dest_port)
 
     data_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    data_socket.connect(dest)
+    data_socket.connect((dest_ip, dest_port))
 
-    window = sg.Window("CAR CRUD", win_layout, element_justification='c', enable_close_attempted_event=True, finalize=True)
-
-    car_dict = {}
-
+    interface = g.gui()
+    
     while True:
-        event, values = window.read()
+        op = interface.get_event()
 
-        if(event == sg.WINDOW_CLOSE_ATTEMPTED_EVENT) or event == "Exit":
+        if(op == codes.END):
             break 
-        elif(event == "-ADDB-"):
-            op = '0'
-            data_socket.send(op.encode())
 
-            plate = values["-PLATE-"]
-            name = values["-NAME-"]
-            brand = values["-BRAND-"]
-            year = values["-YEAR-"]
-            km = values["-KMS-"]
-            fuel = values["-FUEL-"]
-            entry_str = plate + "@" + name + "@" + brand + "@" + year + "@" + km + "@" + fuel
+        #Operação de Criação
+        elif(op == codes.CREATE):
+            #Envia o código da operação
+            data_socket.send(op.to_bytes(length=1, byteorder='big', signed=False)) 
 
+            #Pega os dados da interface
+            entry = interface.get_fields()
+
+            #Empacota os dados em uma string no formato: placa @ modelo @ marca @ ano @ km @ combustível
+            entry_str = entry['plate'] + "@" + entry['name'] + "@" + entry['brand'] + "@" + \
+                        entry['year'] + "@" + entry['km'] + "@" + entry['fuel']
+
+            #Envia o tamanho da string de dados
             data_socket.send(len(entry_str).to_bytes(length=1, byteorder='big', signed=False))
+            #Envia a string de dados
             data_socket.send(entry_str.encode())
 
+            #Espera pelo código de retorno do servidor
             status = int.from_bytes(data_socket.recv(1), byteorder='big', signed=False)
 
-            if(status == 255):
-                sg.popup_ok("Registro Já Existente")
+            #Verifica se houve algum erro
+            if(status == codes.ERROR):
+                interface.pop_up("Registro Já Existente!")
             else:
-                sg.popup_ok("Registro Criado Com Sucesso")
+                interface.pop_up("Registro Criado Com Sucesso!")
 
-        elif(event == "-REFB-"):
-            op = '1'
-            plate = values["-PLATE-"]
-            data_socket.send(op.encode())
-            data_socket.send(len(plate).to_bytes(length = 1, byteorder = 'big', signed = False))
-            data_socket.send(plate.encode())
+        #Operação de Leitura
+        elif(op == codes.READ):
+            #Envia o código de operação
+            data_socket.send(op.to_bytes(length=1, byteorder='big', signed=False))
 
+            #Pega os dados da interface
+            entry = interface.get_fields()
+            
+            #Envia o tamanho da string de placa
+            data_socket.send(len(entry['plate']).to_bytes(length = 1, byteorder = 'big', signed = False))
+            
+            #Envia a placa
+            data_socket.send(entry['plate'].encode())
+
+            #Recebe a resposta do servidor
+            status = int.from_bytes(data_socket.recv(1), byteorder='big', signed=False)
+
+            #Verifica se houve erro
+            if(status == codes.ERROR):
+                interface.pop_up("Registro Não Encontrado!")
+                continue
+
+            #Recebe o tamanho da string de dados
             entry_sz = int.from_bytes(data_socket.recv(1), byteorder='big', signed=False)
 
-            if(entry_sz == 255):
-                sg.popup_ok("Registro Não Encontrado!", font=("Arial Baltic", 10))
-                continue
-
+            #Recebe a string de dados
             entry = data_socket.recv(entry_sz).decode()
 
+            #Desempacota a string
             entry = entry.split('@')
     
-            window["-PLATE-"].update(value=entry[0])
-            window["-NAME-"].update(value=entry[1])
-            window["-BRAND-"].update(value=entry[2])
-            window["-YEAR-"].update(value=int(entry[3]))
-            window["-KMS-"].update(value=int(entry[4]))
-            window["-FUEL-"].update(value=entry[5])
+            #Atualiza a interface
+            interface.set_fields(entry[0], entry[1], entry[2], entry[3], entry[4], entry[5])
         
-        elif(event == "-UPDB-"):
-            plate = values["-PLATE-"]
-            name = values["-NAME-"]
-            brand = values["-BRAND-"]
-            year = values["-YEAR-"]
-            km = values["-KMS-"]
-            fuel = values["-FUEL-"]
+        #Operação de Atualização
+        elif(op == codes.UPDATE):
+            #Pega os dados da interface
+            entry = interface.get_fields()
 
+            #Faz a validação dos campos
             try:
-                int(year)
+                int(entry['year'])
             except ValueError:
-                sg.popup_ok("Ano Inválido", font=("Arial Baltic", 10))
+                interface.pop_up("Ano Inválido")
                 continue
 
             try:
-                int(km)
+                int(entry['km'])
             except ValueError:
-                sg.popup_ok("KM Inválido", font=("Arial Baltic", 10))
+                interface.pop_up("KM Inválido")
                 continue
 
-            op = '2'
-            data_socket.send(op.encode())
+            #Envia o código de operação
+            data_socket.send(op.to_bytes(length=1, byteorder='big', signed=False)) 
 
-            entry_str = plate + "@" + name + "@" + brand + "@" + year + "@" + km + "@" + fuel
+            #Empacota os dados em uma string no formato: placa @ modelo @ marca @ ano @ km @ combustível
+            entry_str = entry['plate'] + "@" + entry['name'] + "@" + entry['brand'] + "@" + \
+                        entry['year'] + "@" + entry['km'] + "@" + entry['fuel']
 
+            #Envia o tamanho da string
             data_socket.send(len(entry_str).to_bytes(length=1, byteorder='big', signed=False))
+            #Envia a string
             data_socket.send(entry_str.encode())
             
+            #Recebe a resposta do servidor
             status = int.from_bytes(data_socket.recv(1), byteorder='big', signed=False)
 
-            if(status == 255):
-                sg.popup_ok("Registro Não Encontrado")
+            #Verifica se houve algum erro
+            if(status == codes.ERROR):
+                interface.pop_up("Registro Não Encontrado!")
             else:
-                sg.popup_ok("Registro Atualizado com Sucesso")
+                interface.pop_up("Registro Atualizado com Sucesso!")
 
-        elif(event == "-DELB-"):
-            plate = values["-PLATE-"]
+        #Operação de Apagagem
+        elif(op == codes.DELETE):
+            entry = interface.get_fields()
 
-            op = '3'
-            data_socket.send(op.encode())
-            data_socket.send(len(plate).to_bytes(length=1, byteorder='big', signed=False))
-            data_socket.send(plate.encode())
-
-            status = int.from_bytes(data_socket.recv(1), byteorder='big', signed=False)
-
-            if(status == 255):
-                sg.popup_ok("Registro Não Encontrado")
-            else:
-                sg.popup_ok("Registro Deletado Com Sucesso")
+            #Envia o código de Operação
+            data_socket.send(op.to_bytes(length=1, byteorder='big', signed=False)) 
             
-        elif(event == "-CLRB-"):
-            window["-PLATE-"].update("")
-            window["-NAME-"].update("")
-            window["-BRAND-"].update("")
-            window["-YEAR-"].update("")
-            window["-KMS-"].update("")
-            window["-FUEL-"].update("")
+            #Envia o tamanho da placa
+            data_socket.send(len(entry['plate']).to_bytes(length=1, byteorder='big', signed=False))
 
+            #Envia a placa
+            data_socket.send(entry['plate'].encode())
 
+            #Recebe a resposta do servidor
+            status = int.from_bytes(data_socket.recv(1), byteorder='big', signed=False)
 
-    op = '4'
-    data_socket.send(op.encode())
+            #Verifica se houve algum erro
+            if(status == codes.ERROR):
+                interface.pop_up("Registro Não Encontrado!")
+            else:
+                interface.pop_up("Registro Deletado Com Sucesso")
+            
+
+    #Finaliza enviando um código de fim ao servidor
+    op = codes.END
+    data_socket.send(op.to_bytes(length=1, byteorder='big', signed=False))
+    
+    #Fecha a conexão
     data_socket.close()
 
 
